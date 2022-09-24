@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <property name="LOG_FILE" value="/apprun/logs/auto-response"/>
+    <property name="MAX_FILE_SIZE" value="64"/>
+    <property name="MAX_HISTORY_DAY" value="7"/>
+
+    <!--格式化输出：%d：日期，%-4r：程序启动到创建日志记录的时间，毫秒， %-5p：日志级别，%t：线程名，%m：日志消息，%n：换行符 -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-4relative %-5level [%thread - - - - -] %logger{50} >> %msg:%line%n"/>
+    <property name="CONSOLE_PATTERN"
+              value="%clr([%d{yyyy-MM-dd HH:mm:ss.SSS}]){magenta} %clr(%-4r){blue} %clr(%-5p) %clr(-){faint} %clr([%15.15t]) %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+
+    <appender name="CONSOLE-APPENDER" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="DEFAULT-APPENDER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}/auto-response.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}/auto-response.%d{yyyyMMdd}-%i.log</fileNamePattern>
+            <maxHistory>${MAX_HISTORY_DAY}</maxHistory>
+            <TimeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <MaxFileSize>${MAX_FILE_SIZE}MB</MaxFileSize>
+            </TimeBasedFileNamingAndTriggeringPolicy>
+            <totalSizeCap>15GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder charset="UTF-8">
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ERROR-APPENDER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}/auto-response.error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}/auto-response.error.%d{yyyyMMdd}-%i.log</fileNamePattern>
+            <maxHistory>${MAX_HISTORY_DAY}</maxHistory>
+            <TimeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <MaxFileSize>${MAX_FILE_SIZE}MB</MaxFileSize>
+            </TimeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <encoder charset="UTF-8">
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <appender name="WARN-APPENDER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}/auto-response.warn.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}/gb-web.warn.%d{yyyyMMdd}-%i.log</fileNamePattern>
+            <maxHistory>${MAX_HISTORY_DAY}</maxHistory>
+            <TimeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <MaxFileSize>${MAX_FILE_SIZE}MB</MaxFileSize>
+            </TimeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <encoder charset="UTF-8">
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <logger name="io.lettuce.core.protocol" level="ERROR"/>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE-APPENDER"/>
+        <appender-ref ref="DEFAULT-APPENDER"/>
+        <appender-ref ref="WARN-APPENDER"/>
+        <appender-ref ref="ERROR-APPENDER"/>
+    </root>
+</configuration>

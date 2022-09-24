@@ -1,0 +1,78 @@
+simbot:
+    core:
+        bot-resource-type: BOTH
+    component:
+        mirai:
+            heartbeat-period-millis: 30000
+            heartbeat-timeout-millis: 5000
+            reconnection-retry-times: 2147483647
+            protocol: ANDROID_PAD
+            no-bot-log: true
+            no-network-log: true
+            use-simbot-bot-log: true
+            use-simbot-network-log: true
+            device-info-seed: 1
+server:
+    port: 9090
+
+#日志
+logging:
+    config: classpath:logback-release.xml
+
+spring:
+    redis:
+        host: 43.143.95.88
+        password: root
+    main:
+        allow-bean-definition-overriding: true
+    jackson:
+        #日期格式化
+        date-format: yyyy-MM-dd HH:mm:ss
+        time-zone: GMT+8
+        serialization:
+            #格式化输出
+            indent_output: true
+            #忽略无法转换的对象
+            fail_on_empty_beans: false
+        #属性为NULL 不序列化
+        #default-property-inclusion: non_null
+        deserialization:
+            #允许对象忽略json中不存在的属性
+            fail_on_unknown_properties: false
+            #fail-on-ignored-properties: false
+        parser:
+            #允许出现特殊字符和转义符
+            allow_unquoted_control_chars: true
+            #允许出现单引号
+            allow_single_quotes: true
+    mvc:
+        async:
+            request-timeout: 3600000
+    aop:
+        auto: true
+        proxy-target-class: true
+    datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        type: com.zaxxer.hikari.HikariDataSource
+        url: jdbc:mysql://43.143.95.88:13306/auto-response?useUnicode=true&characterEncoding=utf8&characterResultSets=utf8&serverTimezone=Asia/Shanghai&zeroDateTimeBehavior=convertToNull&useSSL=false&useAffectedRows=true&allowPublicKeyRetrieval=true
+        username: root
+        password: root
+        hikari:
+            connection-timeout: 30000        # 等待连接池分配连接的最大时长（毫秒），超过这个时长还没可用的连接则发生SQLException， 默认:30秒
+            minimum-idle: 5                  # 最小连接数
+            maximum-pool-size: 20            # 最大连接数
+            auto-commit: true                # 事务自动提交
+            idle-timeout: 600000             # 连接超时的最大时长（毫秒），超时则被释放（retired），默认:10分钟
+            pool-name: DateSourceHikariCP     # 连接池名字
+            max-lifetime: 1800000             # 连接的生命时长（毫秒），超时而且没被使用则被释放（retired），默认:30分钟 1800000ms
+            connection-test-query: SELECT 1   # 连接测试语句
+            servlet:
+                multipart:
+                    max-file-size: 100MB
+                    max-request-size: 200MB
+
+#mybatis
+mybatis-plus:
+    mapper-locations: classpath*:mapper/*Mapper.xml
+
+
