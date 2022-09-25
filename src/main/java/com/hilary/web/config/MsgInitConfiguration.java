@@ -3,9 +3,8 @@ package com.hilary.web.config;
 import com.alibaba.fastjson.JSONArray;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.hilary.web.mapper.PropagandaMapper;
-import com.hilary.web.mapper.RelationMapper;
 import com.hilary.web.mapper.RobotMapper;
-import com.hilary.web.model.Relation;
+import com.hilary.web.model.Propaganda;
 import com.hilary.web.model.Robot;
 import com.hilary.web.utils.EmptyUtil;
 import com.hilary.web.utils.PropertiesUtils;
@@ -35,8 +34,6 @@ public class MsgInitConfiguration {
     RobotMapper robotMapper;
     @Autowired
     PropagandaMapper propagandaMapper;
-    @Autowired
-    RelationMapper relationMapper;
 
 
     @PostConstruct
@@ -50,18 +47,18 @@ public class MsgInitConfiguration {
         ).collect(Collectors.toList());
         // 先清空数据
         codeList.forEach(code -> stringRedisTemplate.delete(code));
-        //查询机器人对应的目标对象
+        //查询机器人要发送的消息id放入缓存
         for (String source : codeList) {
             String sourceCode = source.split(":")[1];
-            String[] targetCodes = relationMapper.selectList(Wrappers.lambdaQuery(Relation.class)
-                    .eq(Relation::getSourceCode, sourceCode)).stream().map(code ->
-                    String.valueOf(code.getId())).toArray(String[]::new);
-            if (!EmptyUtil.isNullOrEmpty(targetCodes)) {
-                stringRedisTemplate.opsForSet().add(source, targetCodes);
+            String[] ids = propagandaMapper.selectList(Wrappers.lambdaQuery(Propaganda.class)
+                            .eq(Propaganda::getRobotCode, sourceCode)).stream().map(Propaganda::getId).distinct()
+                    .toArray(String[]::new);
+            if (!EmptyUtil.isNullOrEmpty(ids)) {
+                stringRedisTemplate.opsForSet().add(source, ids);
             }
             Robot robot = new Robot();
             robot.setCode(source);
-            robot.setReceive(JSONArray.toJSONString(targetCodes));
+            robot.setReceive(JSONArray.toJSONString(ids));
             robotMapper.updateById(robot);
             //初始化机器人脚本
             robots.stream().map(Robot::getPassword).forEach(password -> {

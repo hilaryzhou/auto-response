@@ -39,7 +39,7 @@ public class PropagandaNotify {
     StringRedisTemplate stringRedisTemplate;
 
     @Async
-    @Scheduled(cron = "0 0/1 * * * ?")
+    @Scheduled(cron = "0 0/3 * * * ?")
     public void autoPropagandaHandler() {
         //时间转换
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

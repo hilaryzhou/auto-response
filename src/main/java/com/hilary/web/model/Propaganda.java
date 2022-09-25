@@ -47,4 +47,9 @@ public class Propaganda {
      * private/group
      */
     private String type;
+    /**
+     * 机器人id
+     */
+    @TableField("robot_code")
+    private String robotCode;
 }

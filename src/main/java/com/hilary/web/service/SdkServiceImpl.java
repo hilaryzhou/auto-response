@@ -56,23 +56,26 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper, Propaganda> im
         Robot robot = ThreadLocalUtils.getrobot();
         String source = robot.getCode();
         propaganda.setTime(new Date());
+        propaganda.setRobotCode(robot.getCode());
         Propaganda prop = propagandaMapper.selectOne(Wrappers.lambdaQuery(Propaganda.class)
                 .eq(Propaganda::getCode, propaganda.getCode())
                 .eq(Propaganda::getContext, propaganda.getContext()));
+        //处理关联表
+        LambdaQueryWrapper<Relation> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Relation::getTargetCode, propaganda.getCode()).eq(Relation::getSourceCode, source);
+        Relation relation = relationMapper.selectOne(queryWrapper);
         if (EmptyUtil.isNullOrEmpty(prop)) {
+            //新增
             propagandaMapper.insert(propaganda);
-        }else {
+        } else {
             //修改
             prop.setImage(propaganda.getImage());
             prop.setSend(propaganda.isSend());
             prop.setType(propaganda.getType());
             prop.setTime(new Date());
+            prop.setRobotCode(robot.getCode());
             propagandaMapper.updateById(prop);
         }
-        //处理关联表
-        LambdaQueryWrapper<Relation> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Relation::getTargetCode, propaganda.getCode()).eq(Relation::getSourceCode, source);
-        Relation relation = relationMapper.selectOne(queryWrapper);
         if (EmptyUtil.isNullOrEmpty(relation)) {
             relation = new Relation();
             relation.setId(IdWorker.getIdStr());
