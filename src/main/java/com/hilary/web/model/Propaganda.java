@@ -1,6 +1,5 @@
 package com.hilary.web.model;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -21,8 +20,8 @@ public class Propaganda {
     /**
      * 主键
      */
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
+    @TableId("id")
+    private String id;
     /**
      * 用户qq
      */

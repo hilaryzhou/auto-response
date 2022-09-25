@@ -1,5 +1,6 @@
 package com.hilary.web.task;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.hilary.web.mapper.PropagandaMapper;
 import com.hilary.web.model.Propaganda;
 import com.hilary.web.utils.EmptyUtil;
@@ -38,7 +39,7 @@ public class PropagandaNotify {
     StringRedisTemplate stringRedisTemplate;
 
     @Async
-    @Scheduled(cron = "0 0/3 * * * ?")
+    @Scheduled(cron = "0 0/1 * * * ?")
     public void autoPropagandaHandler() {
         //时间转换
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -53,12 +54,16 @@ public class PropagandaNotify {
             if (EmptyUtil.isNullOrEmpty(receiveCodeList)) {
                 break;
             }
-            receiveCodeList.forEach(receive -> {
-                Propaganda propaganda = propagandaMapper.selectById(receive);
+            for (String receive : receiveCodeList) {
+                Propaganda propaganda = propagandaMapper.selectOne(Wrappers.lambdaQuery(Propaganda.class)
+                        .eq(Propaganda::getId, receive));
+                if (EmptyUtil.isNullOrEmpty(propaganda)) {
+                    continue;
+                }
                 String code = propaganda.getCode();
                 String msg = propaganda.getContext();
                 String image = propaganda.getImage();
-                if (EmptyUtil.isNullOrEmpty(propaganda.getContext()) && !EmptyUtil.isNullOrEmpty(propaganda.getImage())) {
+                if (EmptyUtil.isNullOrEmpty(msg) && !EmptyUtil.isNullOrEmpty(image)) {
                     //只发图片
                     if (PRIVATE_MSG.equals(propaganda.getType())) {
                         bot.getSender().SENDER.sendPrivateMsg(code, image);
@@ -67,7 +72,7 @@ public class PropagandaNotify {
                         bot.getSender().SENDER.sendGroupMsg(code, image);
                         log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
                     }
-                } else if (!EmptyUtil.isNullOrEmpty(propaganda.getContext()) && EmptyUtil.isNullOrEmpty(propaganda.getImage())) {
+                } else if (!EmptyUtil.isNullOrEmpty(msg) && EmptyUtil.isNullOrEmpty(image)) {
                     //只发文字
                     if (PRIVATE_MSG.equals(propaganda.getType())) {
                         bot.getSender().SENDER.sendPrivateMsg(code, msg);
@@ -76,7 +81,7 @@ public class PropagandaNotify {
                         bot.getSender().SENDER.sendGroupMsg(code, msg);
                         log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
                     }
-                } else if (!EmptyUtil.isNullOrEmpty(propaganda.getContext()) && !EmptyUtil.isNullOrEmpty(propaganda.getImage())) {
+                } else if (!EmptyUtil.isNullOrEmpty(msg) && !EmptyUtil.isNullOrEmpty(image)) {
                     //只发文字
                     if (PRIVATE_MSG.equals(propaganda.getType())) {
                         bot.getSender().SENDER.sendPrivateMsg(code, msg);
@@ -88,7 +93,7 @@ public class PropagandaNotify {
                         log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
                     }
                 }
-            });
+            }
         }
     }
 }

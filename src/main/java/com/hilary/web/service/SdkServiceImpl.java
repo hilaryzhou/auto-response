@@ -1,8 +1,8 @@
 package com.hilary.web.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.IdWorker;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hilary.web.exception.CustException;
 import com.hilary.web.mapper.PropagandaMapper;
@@ -51,27 +51,36 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper, Propaganda> im
 
     @Override
     public void edit(Propaganda propaganda) {
-        String propId = String.valueOf(IdWorker.getId());
-        propaganda.setId(IdWorker.getId());
+        String propId = IdWorker.getIdStr();
+        propaganda.setId(propId);
         Robot robot = ThreadLocalUtils.getrobot();
         String source = robot.getCode();
         propaganda.setTime(new Date());
-        LambdaUpdateWrapper<Propaganda> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Propaganda::getCode, source).eq(Propaganda::getContext, propaganda.getContext());
-        super.saveOrUpdate(propaganda, wrapper);
+        Propaganda prop = propagandaMapper.selectOne(Wrappers.lambdaQuery(Propaganda.class)
+                .eq(Propaganda::getCode, propaganda.getCode())
+                .eq(Propaganda::getContext, propaganda.getContext()));
+        if (EmptyUtil.isNullOrEmpty(prop)) {
+            propagandaMapper.insert(propaganda);
+        }else {
+            //修改
+            prop.setImage(propaganda.getImage());
+            prop.setSend(propaganda.isSend());
+            prop.setType(propaganda.getType());
+            prop.setTime(new Date());
+            propagandaMapper.updateById(prop);
+        }
+        //处理关联表
         LambdaQueryWrapper<Relation> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Relation::getTargetCode, propaganda.getCode()).eq(Relation::getSourceCode, source);
         Relation relation = relationMapper.selectOne(queryWrapper);
         if (EmptyUtil.isNullOrEmpty(relation)) {
             relation = new Relation();
-            relation.setId(IdWorker.getId());
+            relation.setId(IdWorker.getIdStr());
             relation.setSourceCode(source);
             relation.setTargetCode(propaganda.getCode());
             relation.setType(propaganda.getType());
             relationMapper.insert(relation);
         } else {
-            relation.setSourceCode(source);
-            relation.setTargetCode(propaganda.getCode());
             relation.setType(propaganda.getType());
             relationMapper.updateById(relation);
         }

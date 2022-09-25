@@ -1,6 +1,5 @@
 package com.hilary.web.model;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -18,8 +17,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @TableName("t_relation")
 public class Relation {
-    @TableId(value = "id",type = IdType.AUTO)
-    private Long id;
+    @TableId("id")
+    private String id;
     @TableField("source_code")
     private String sourceCode;
     @TableField("target_code")
