@@ -51,6 +51,7 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper, Propaganda> im
 
     @Override
     public void edit(Propaganda propaganda) {
+        String propId = String.valueOf(IdWorker.getId());
         propaganda.setId(IdWorker.getId());
         Robot robot = ThreadLocalUtils.getrobot();
         String source = robot.getCode();
@@ -58,16 +59,23 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper, Propaganda> im
         LambdaUpdateWrapper<Propaganda> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Propaganda::getCode, source).eq(Propaganda::getContext, propaganda.getContext());
         super.saveOrUpdate(propaganda, wrapper);
-        LambdaQueryWrapper<Propaganda> queryWrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Propaganda::getCode, source).eq(Propaganda::getCode, propaganda.getCode());
-        boolean flag = propagandaMapper.exists(queryWrapper);
-        Relation relation = new Relation(IdWorker.getId(), source, propaganda.getCode(), propaganda.getType());
-        if (!flag) {
+        LambdaQueryWrapper<Relation> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Relation::getTargetCode, propaganda.getCode()).eq(Relation::getSourceCode, source);
+        Relation relation = relationMapper.selectOne(queryWrapper);
+        if (EmptyUtil.isNullOrEmpty(relation)) {
+            relation = new Relation();
+            relation.setId(IdWorker.getId());
+            relation.setSourceCode(source);
+            relation.setTargetCode(propaganda.getCode());
+            relation.setType(propaganda.getType());
             relationMapper.insert(relation);
+        } else {
+            relation.setSourceCode(source);
+            relation.setTargetCode(propaganda.getCode());
+            relation.setType(propaganda.getType());
+            relationMapper.updateById(relation);
         }
-        relationMapper.updateById(relation);
-
-        stringRedisTemplate.opsForSet().add(ROBOT_CODE_PREFIX + source, propaganda.getType() + ":" + propaganda.getCode());
+        stringRedisTemplate.opsForSet().add(ROBOT_CODE_PREFIX + source, propId);
     }
 
     @Override

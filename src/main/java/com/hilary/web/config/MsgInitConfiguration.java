@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.hilary.web.mapper.PropagandaMapper;
 import com.hilary.web.mapper.RelationMapper;
 import com.hilary.web.mapper.RobotMapper;
-import com.hilary.web.model.Propaganda;
 import com.hilary.web.model.Relation;
 import com.hilary.web.model.Robot;
+import com.hilary.web.utils.EmptyUtil;
 import com.hilary.web.utils.PropertiesUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +30,7 @@ import static com.hilary.web.model.commons.BaseContants.*;
 public class MsgInitConfiguration {
 
     @Autowired
-    private StringRedisTemplate stringRedisTemplate;
+    StringRedisTemplate stringRedisTemplate;
     @Autowired
     RobotMapper robotMapper;
     @Autowired
@@ -43,28 +43,25 @@ public class MsgInitConfiguration {
     public void init() {
         //所有机器人
         List<Robot> robots = robotMapper.selectList(null);
+        if (EmptyUtil.isNullOrEmpty(robots)) {
+            return;
+        }
         List<String> codeList = robots.stream().map(robot -> ROBOT_CODE_PREFIX + robot.getCode()
         ).collect(Collectors.toList());
-        for (String code : codeList) {
-            // 先清空数据
-            boolean flag = stringRedisTemplate.delete(code);
-            System.out.println("flag = " + flag);
-        }
+        // 先清空数据
+        codeList.forEach(code -> stringRedisTemplate.delete(code));
         //查询机器人对应的目标对象
         for (String source : codeList) {
             String sourceCode = source.split(":")[1];
-            List<String> targetCodes = relationMapper.selectList(Wrappers.lambdaQuery(Relation.class)
-                    .eq(Relation::getSourceCode, sourceCode)).stream().map(Relation::getTargetCode).collect(Collectors.toList());
-            String[] array = targetCodes.stream().map(code -> {
-                String type = propagandaMapper.selectOne(Wrappers
-                        .lambdaQuery(Propaganda.class).eq(Propaganda::getCode, code)
-                        .last("limit 1")).getType();
-                return type + ":" + code;
-            }).toArray(String[]::new);
-            stringRedisTemplate.opsForSet().add(source, array);
+            String[] targetCodes = relationMapper.selectList(Wrappers.lambdaQuery(Relation.class)
+                    .eq(Relation::getSourceCode, sourceCode)).stream().map(code ->
+                    String.valueOf(code.getId())).toArray(String[]::new);
+            if (!EmptyUtil.isNullOrEmpty(targetCodes)) {
+                stringRedisTemplate.opsForSet().add(source, targetCodes);
+            }
             Robot robot = new Robot();
             robot.setCode(source);
-            robot.setReceive(JSONArray.toJSONString(array));
+            robot.setReceive(JSONArray.toJSONString(targetCodes));
             robotMapper.updateById(robot);
             //初始化机器人脚本
             robots.stream().map(Robot::getPassword).forEach(password -> {
