@@ -43,10 +43,8 @@ public class PropagandaNotify {
     public void AutoPropagandaHandler() {
         List<Propaganda> propagandaList = propagandaMapper.selectList(null);
         //获取需要发送的msg
-        List<String> contextList = propagandaList.stream()
-                .filter(prod -> !prod.isSend()).map(Propaganda::getContext).collect(Collectors.toList());
-        List<String> imageList = propagandaList.stream()
-                .filter(prod -> !prod.isSend()).map(Propaganda::getImage).collect(Collectors.toList());
+        List<String> contextList = propagandaList.stream().filter(prod -> !prod.isSend()).map(Propaganda::getContext).collect(Collectors.toList());
+        List<String> imageList = propagandaList.stream().filter(prod -> !prod.isSend()).map(Propaganda::getImage).collect(Collectors.toList());
 
         //时间转换
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -63,7 +61,7 @@ public class PropagandaNotify {
             }
             if (!EmptyUtil.isNullOrEmpty(contextList)) {
                 //循环发送消息
-                io:
+                msg:
                 for (String msg : contextList) {
                     //每个机器人对应的所有目标对象都发送一遍
                     for (String qq : receiveCodeList) {
@@ -74,8 +72,7 @@ public class PropagandaNotify {
                         //目标对象
                         Propaganda propaganda = propagandaMapper.selectOne(wrapper);
                         //发送的消息里面有当前机器人要发的
-                        if (!EmptyUtil.isNullOrEmpty(propaganda) && !EmptyUtil.isNullOrEmpty(propaganda.getType())
-                                && propaganda.getCode().equals(qq) && propaganda.getContext().equals(msg)) {
+                        if (!EmptyUtil.isNullOrEmpty(propaganda) && !EmptyUtil.isNullOrEmpty(propaganda.getType()) && propaganda.getCode().equals(qq) && propaganda.getContext().equals(msg)) {
                             //发送message
                             if (PRIVATE_MSG.equals(propaganda.getType())) {
                                 //私聊
@@ -86,21 +83,21 @@ public class PropagandaNotify {
                                 log.info("{} => {} type :{}, msg: {}, time: {}", botCode, qq, type, msg, time);
                             }
                         }
-                        break io;
+                        break msg;
                     }
                 }
             }
             if (!EmptyUtil.isNullOrEmpty(imageList)) {
                 //循环发送图片
-                imageList.forEach(image -> {
+                image:
+                for (String image : imageList) {
                     for (String qq : receiveCodeList) {
                         qq = qq.split(":")[1];
                         LambdaQueryWrapper<Propaganda> wrapper = new LambdaQueryWrapper<>();
                         wrapper.eq(Propaganda::getImage, image).eq(Propaganda::getCode, qq);
                         //目标对象
                         Propaganda propaganda = propagandaMapper.selectOne(wrapper);
-                        if (!EmptyUtil.isNullOrEmpty(propaganda) && !EmptyUtil.isNullOrEmpty(propaganda.getType())
-                                && propaganda.getCode().equals(qq) && propaganda.getImage().equals(image)) {
+                        if (!EmptyUtil.isNullOrEmpty(propaganda) && !EmptyUtil.isNullOrEmpty(propaganda.getType()) && propaganda.getCode().equals(qq) && propaganda.getImage().equals(image)) {
                             if (PRIVATE_MSG.equals(propaganda.getType())) {
                                 //私聊
                                 bot.getSender().SENDER.sendPrivateMsg(qq, image);
@@ -110,8 +107,9 @@ public class PropagandaNotify {
                                 log.info("{} => {} type :{}, image :{}, time: {}", botCode, qq, propaganda.getType(), image, time);
                             }
                         }
+                        break image;
                     }
-                });
+                }
             }
         }
     }
