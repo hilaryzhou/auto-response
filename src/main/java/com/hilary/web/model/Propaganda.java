@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import java.util.Date;
@@ -15,6 +16,7 @@ import java.util.Date;
  **/
 @Data
 @TableName("t_propaganda")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Propaganda {
     /**
      * 主键
@@ -42,4 +44,8 @@ public class Propaganda {
      * 创建时间
      */
     private Date time;
+    /**
+     * private/group
+     */
+    private String type;
 }

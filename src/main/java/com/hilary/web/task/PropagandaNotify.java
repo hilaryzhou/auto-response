@@ -17,7 +17,9 @@ import javax.annotation.Resource;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
+
+import static com.hilary.web.model.commons.BaseContants.*;
 
 /**
  * @author: zhouhuan
@@ -33,46 +35,85 @@ public class PropagandaNotify {
 
     @Autowired
     PropagandaMapper propagandaMapper;
-
-    private static final String ROBOT_CODE_PREFIX = "botCode:";
     @Autowired
-    StringRedisTemplate redisTemplate;
+    StringRedisTemplate stringRedisTemplate;
 
     @Async
-    @Scheduled(cron = "0 0/1 * * * ?")
+    @Scheduled(cron = "0 0/3 * * * ?")
     public void AutoPropagandaHandler() {
+        List<Propaganda> propagandaList = propagandaMapper.selectList(null);
         //获取需要发送的msg
-        Stream<String> contextList = propagandaMapper.selectList(null).stream()
-                .filter(Propaganda::isSend).map(Propaganda::getContext);
-        if (EmptyUtil.isNullOrEmpty(contextList)) {
-            log.info("无消息需要发送");
-            return;
-        }
+        List<String> contextList = propagandaList.stream()
+                .filter(prod -> !prod.isSend()).map(Propaganda::getContext).collect(Collectors.toList());
+        List<String> imageList = propagandaList.stream()
+                .filter(prod -> !prod.isSend()).map(Propaganda::getImage).collect(Collectors.toList());
+
+        //时间转换
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String time = format.format(System.currentTimeMillis());
         //获取所有机器人
         List<Bot> bots = botManager.getBots();
-        bots.forEach(bot -> {
+        for (Bot bot : bots) {
             String botCode = bot.getBotInfo().getBotCode();
             //获取每个机器人对应的receiveCode目标对象
-            Set<String> receiveCodeList = redisTemplate.opsForSet().members(ROBOT_CODE_PREFIX + botCode);
-            contextList.forEach(msg -> {
-                LambdaQueryWrapper<Propaganda> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(!EmptyUtil.isNullOrEmpty(msg), Propaganda::getContext, msg);
-                //目标对象
-                Propaganda propaganda = propagandaMapper.selectOne(wrapper);
-                //每个机器人对应的所有目标对象都发送一遍
-                receiveCodeList.forEach(qq -> {
-                    //发送的消息里面有当前机器人要发的
-                    if (propaganda.getCode().equals(qq)) {
-                        //发送message
-                        bot.getSender().SENDER.sendPrivateMsg(qq, msg);
-                        String time = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis());
-                        log.info("{} 对 {} 发送了一条消息: msg: {} time: {}", botCode, qq, msg, time);
-                        if (!EmptyUtil.isNullOrEmpty(propaganda.getImage())) {
-                            bot.getSender().SENDER.sendPrivateMsg(qq, propaganda.getImage());
+            String key = ROBOT_CODE_PREFIX + botCode;
+            Set<String> receiveCodeList = stringRedisTemplate.opsForSet().members(key);
+            if (EmptyUtil.isNullOrEmpty(receiveCodeList)) {
+                break;
+            }
+            if (!EmptyUtil.isNullOrEmpty(contextList)) {
+                //循环发送消息
+                io:
+                for (String msg : contextList) {
+                    //每个机器人对应的所有目标对象都发送一遍
+                    for (String qq : receiveCodeList) {
+                        String type = qq.split(":")[0];
+                        qq = qq.split(":")[1];
+                        LambdaQueryWrapper<Propaganda> wrapper = new LambdaQueryWrapper<>();
+                        wrapper.eq(Propaganda::getContext, msg).eq(Propaganda::getCode, qq);
+                        //目标对象
+                        Propaganda propaganda = propagandaMapper.selectOne(wrapper);
+                        //发送的消息里面有当前机器人要发的
+                        if (!EmptyUtil.isNullOrEmpty(propaganda) && !EmptyUtil.isNullOrEmpty(propaganda.getType())
+                                && propaganda.getCode().equals(qq) && propaganda.getContext().equals(msg)) {
+                            //发送message
+                            if (PRIVATE_MSG.equals(propaganda.getType())) {
+                                //私聊
+                                bot.getSender().SENDER.sendPrivateMsg(qq, msg);
+                                log.info("{} => {} type :{}, msg: {}, time: {}", botCode, qq, type, msg, time);
+                            } else if (GROUP_MSG.equals(propaganda.getType())) {
+                                bot.getSender().SENDER.sendGroupMsg(qq, msg);
+                                log.info("{} => {} type :{}, msg: {}, time: {}", botCode, qq, type, msg, time);
+                            }
+                        }
+                        break io;
+                    }
+                }
+            }
+            if (!EmptyUtil.isNullOrEmpty(imageList)) {
+                //循环发送图片
+                imageList.forEach(image -> {
+                    for (String qq : receiveCodeList) {
+                        qq = qq.split(":")[1];
+                        LambdaQueryWrapper<Propaganda> wrapper = new LambdaQueryWrapper<>();
+                        wrapper.eq(Propaganda::getImage, image).eq(Propaganda::getCode, qq);
+                        //目标对象
+                        Propaganda propaganda = propagandaMapper.selectOne(wrapper);
+                        if (!EmptyUtil.isNullOrEmpty(propaganda) && !EmptyUtil.isNullOrEmpty(propaganda.getType())
+                                && propaganda.getCode().equals(qq) && propaganda.getImage().equals(image)) {
+                            if (PRIVATE_MSG.equals(propaganda.getType())) {
+                                //私聊
+                                bot.getSender().SENDER.sendPrivateMsg(qq, image);
+                                log.info("{} => {} type :{}, image :{}, time: {}", botCode, qq, propaganda.getType(), image, time);
+                            } else {
+                                bot.getSender().SENDER.sendGroupMsg(qq, image);
+                                log.info("{} => {} type :{}, image :{}, time: {}", botCode, qq, propaganda.getType(), image, time);
+                            }
                         }
                     }
                 });
-            });
-        });
+            }
+        }
     }
 }
+

@@ -2,6 +2,7 @@ package com.hilary.web.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hilary.web.exception.CustException;
 import com.hilary.web.mapper.PropagandaMapper;
@@ -19,16 +20,18 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
 
+import static com.hilary.web.model.commons.BaseContants.ROBOT_CODE_PREFIX;
+
 /**
  * @author: zhouhuan
  * @date: 2022-09-24 12:59
  * @description:
  **/
 @Service
-public class SdkServiceImpl extends ServiceImpl<PropagandaMapper,Propaganda> implements SdkService {
+public class SdkServiceImpl extends ServiceImpl<PropagandaMapper, Propaganda> implements SdkService {
 
     @Autowired
-    StringRedisTemplate redisTemplate;
+    private StringRedisTemplate stringRedisTemplate;
     @Autowired
     PropagandaMapper propagandaMapper;
     @Autowired
@@ -38,7 +41,7 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper,Propaganda> imp
     public List<Propaganda> list() {
         Robot robot = ThreadLocalUtils.getrobot();
         if (EmptyUtil.isNullOrEmpty(robot)) {
-            CustException.cust(HttpCodeEnum.DATA_NOT_EXIST,"机器人不存在,请先注册");
+            CustException.cust(HttpCodeEnum.DATA_NOT_EXIST, "机器人不存在,请先注册");
         }
         //根据qq查询对应的喊话数据
         LambdaQueryWrapper<Propaganda> wrapper = new LambdaQueryWrapper<>();
@@ -48,19 +51,23 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper,Propaganda> imp
 
     @Override
     public void edit(Propaganda propaganda) {
+        propaganda.setId(IdWorker.getId());
         Robot robot = ThreadLocalUtils.getrobot();
         String source = robot.getCode();
         propaganda.setTime(new Date());
         LambdaUpdateWrapper<Propaganda> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.eq(Propaganda::getCode, source);
+        wrapper.eq(Propaganda::getCode, source).eq(Propaganda::getContext, propaganda.getContext());
         super.saveOrUpdate(propaganda, wrapper);
-        boolean flag = propagandaMapper.exists(wrapper);
-        Relation relation = new Relation(null, source, propaganda.getCode());
-        if (flag) {
-            relationMapper.updateById(relation);
+        LambdaQueryWrapper<Propaganda> queryWrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Propaganda::getCode, source).eq(Propaganda::getCode, propaganda.getCode());
+        boolean flag = propagandaMapper.exists(queryWrapper);
+        Relation relation = new Relation(IdWorker.getId(), source, propaganda.getCode(), propaganda.getType());
+        if (!flag) {
+            relationMapper.insert(relation);
         }
-        relationMapper.insert(relation);
-        redisTemplate.opsForSet().add(source, propaganda.getCode());
+        relationMapper.updateById(relation);
+
+        stringRedisTemplate.opsForSet().add(ROBOT_CODE_PREFIX + source, propaganda.getType() + ":" + propaganda.getCode());
     }
 
     @Override

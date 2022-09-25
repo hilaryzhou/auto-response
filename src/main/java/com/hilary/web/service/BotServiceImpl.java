@@ -11,7 +11,6 @@ import com.hilary.web.utils.EmptyUtil;
 import com.hilary.web.utils.PropertiesUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -30,10 +29,6 @@ import static com.hilary.web.model.commons.BaseContants.*;
 public class BotServiceImpl extends ServiceImpl<RobotMapper, Robot> implements BotService {
     @Autowired
     RobotMapper robotMapper;
-    @Autowired
-    StringRedisTemplate redisTemplate;
-
-
     @Override
     public void addRoBot(Robot robot) {
         String fileName = ROBOT_FILE_PREFIX + robot.getCode() + ROBOT_SUFFIX;
@@ -47,7 +42,6 @@ public class BotServiceImpl extends ServiceImpl<RobotMapper, Robot> implements B
         robot.setPassword(robot.getPassword());
         try {
             robotMapper.insert(robot);
-            redisTemplate.opsForSet().add(robot.getCode());
         } catch (Exception e) {
             CustException.cust(HttpCodeEnum.ROBOT_ALREADY_EXISTS);
         }
@@ -76,10 +70,6 @@ public class BotServiceImpl extends ServiceImpl<RobotMapper, Robot> implements B
         }
         log.info("编辑机器人成功 code:{}", robot.getCode());
         robotMapper.updateById(robot);
-        Boolean flag = redisTemplate.hasKey(robot.getCode());
-        if (!flag) {
-            redisTemplate.opsForSet().add(robot.getCode());
-        }
     }
 
     @Override
@@ -94,14 +84,14 @@ public class BotServiceImpl extends ServiceImpl<RobotMapper, Robot> implements B
         wrapper.eq(Robot::getCode, robot.getCode());
         robot = super.getOne(wrapper);
         if (!EmptyUtil.isNullOrEmpty(robot)) {
-                //登录成功
-                HashMap<String, Object> map = new HashMap<>();
-                //将密码置空(安全考虑)
-                robot.setPassword("");
-                map.put("robot", robot);
-                return Response.ok(map);
-            } else {
-                return Response.failed(HttpCodeEnum.LOGIN_ERROR);
-            }
+            //登录成功
+            HashMap<String, Object> map = new HashMap<>();
+            //将密码置空(安全考虑)
+            robot.setPassword("");
+            map.put("robot", robot);
+            return Response.ok(map);
+        } else {
+            return Response.failed(HttpCodeEnum.LOGIN_ERROR);
+        }
     }
 }

@@ -24,6 +24,8 @@ public class Relation {
     private String sourceCode;
     @TableField("target_code")
     private String targetCode;
-
-
+    /**
+     * private/group
+     */
+    private String type;
 }

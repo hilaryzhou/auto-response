@@ -2,8 +2,10 @@ package com.hilary.web.config;
 
 import com.alibaba.fastjson.JSONArray;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.hilary.web.mapper.PropagandaMapper;
 import com.hilary.web.mapper.RelationMapper;
 import com.hilary.web.mapper.RobotMapper;
+import com.hilary.web.model.Propaganda;
 import com.hilary.web.model.Relation;
 import com.hilary.web.model.Robot;
 import com.hilary.web.utils.PropertiesUtils;
@@ -28,26 +30,38 @@ import static com.hilary.web.model.commons.BaseContants.*;
 public class MsgInitConfiguration {
 
     @Autowired
-    StringRedisTemplate redisTemplate;
-
+    private StringRedisTemplate stringRedisTemplate;
     @Autowired
     RobotMapper robotMapper;
     @Autowired
+    PropagandaMapper propagandaMapper;
+    @Autowired
     RelationMapper relationMapper;
+
 
     @PostConstruct
     public void init() {
         //所有机器人
         List<Robot> robots = robotMapper.selectList(null);
-        List<String> codeList = robots.stream().map(Robot::getCode).collect(Collectors.toList());
-        // 先清空数据
-        redisTemplate.delete(codeList);
+        List<String> codeList = robots.stream().map(robot -> ROBOT_CODE_PREFIX + robot.getCode()
+        ).collect(Collectors.toList());
+        for (String code : codeList) {
+            // 先清空数据
+            boolean flag = stringRedisTemplate.delete(code);
+            System.out.println("flag = " + flag);
+        }
         //查询机器人对应的目标对象
-        codeList.forEach(source -> {
-            List<String> targetList = relationMapper.selectList(Wrappers.lambdaQuery(Relation.class)
-                    .eq(Relation::getSourceCode, source)).stream().map(Relation::getTargetCode).collect(Collectors.toList());
-            String[] array = targetList.toArray(new String[targetList.size()]);
-            redisTemplate.opsForSet().add(source, array);
+        for (String source : codeList) {
+            String sourceCode = source.split(":")[1];
+            List<String> targetCodes = relationMapper.selectList(Wrappers.lambdaQuery(Relation.class)
+                    .eq(Relation::getSourceCode, sourceCode)).stream().map(Relation::getTargetCode).collect(Collectors.toList());
+            String[] array = targetCodes.stream().map(code -> {
+                String type = propagandaMapper.selectOne(Wrappers
+                        .lambdaQuery(Propaganda.class).eq(Propaganda::getCode, code)
+                        .last("limit 1")).getType();
+                return type + ":" + code;
+            }).toArray(String[]::new);
+            stringRedisTemplate.opsForSet().add(source, array);
             Robot robot = new Robot();
             robot.setCode(source);
             robot.setReceive(JSONArray.toJSONString(array));
@@ -58,10 +72,7 @@ public class MsgInitConfiguration {
                 PropertiesUtils.setValue(ROBOT_CODE, robot.getCode(), fileName);
                 PropertiesUtils.setValue(ROBOT_VERIFICATION, password, fileName);
             });
-
-        });
-        log.info("初始化 SourceRoBot :{}", codeList);
+            log.info("初始化 SourceRoBot :{}", codeList);
+        }
     }
-
-
 }
