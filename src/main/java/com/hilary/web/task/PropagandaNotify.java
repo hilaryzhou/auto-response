@@ -39,7 +39,7 @@ public class PropagandaNotify {
     StringRedisTemplate stringRedisTemplate;
 
     @Async
-    @Scheduled(cron = "0 0/3 * * * ?")
+    @Scheduled(cron = "0 0/5 * * * ?")
     public void autoPropagandaHandler() {
         //时间转换
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -63,35 +63,39 @@ public class PropagandaNotify {
                 String code = propaganda.getCode();
                 String msg = propaganda.getContext();
                 String image = propaganda.getImage();
-                if (EmptyUtil.isNullOrEmpty(msg) && !EmptyUtil.isNullOrEmpty(image)) {
-                    //只发图片
-                    if (PRIVATE_MSG.equals(propaganda.getType())) {
-                        bot.getSender().SENDER.sendPrivateMsg(code, image);
-                        log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
-                    } else {
-                        bot.getSender().SENDER.sendGroupMsg(code, image);
-                        log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
+                try {
+                    if (EmptyUtil.isNullOrEmpty(msg) && !EmptyUtil.isNullOrEmpty(image)) {
+                        //只发图片
+                        if (PRIVATE_MSG.equals(propaganda.getType())) {
+                            bot.getSender().SENDER.sendPrivateMsg(code, image);
+                            log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
+                        } else {
+                            bot.getSender().SENDER.sendGroupMsg(code, image);
+                            log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
+                        }
+                    } else if (!EmptyUtil.isNullOrEmpty(msg) && EmptyUtil.isNullOrEmpty(image)) {
+                        //只发文字
+                        if (PRIVATE_MSG.equals(propaganda.getType())) {
+                            bot.getSender().SENDER.sendPrivateMsg(code, msg);
+                            log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
+                        } else {
+                            bot.getSender().SENDER.sendGroupMsg(code, msg);
+                            log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
+                        }
+                    } else if (!EmptyUtil.isNullOrEmpty(msg) && !EmptyUtil.isNullOrEmpty(image)) {
+                        //只发文字
+                        if (PRIVATE_MSG.equals(propaganda.getType())) {
+                            bot.getSender().SENDER.sendPrivateMsg(code, msg);
+                            bot.getSender().SENDER.sendPrivateMsg(code, image);
+                            log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
+                        } else {
+                            bot.getSender().SENDER.sendGroupMsg(code, msg);
+                            bot.getSender().SENDER.sendGroupMsg(code, image);
+                            log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
+                        }
                     }
-                } else if (!EmptyUtil.isNullOrEmpty(msg) && EmptyUtil.isNullOrEmpty(image)) {
-                    //只发文字
-                    if (PRIVATE_MSG.equals(propaganda.getType())) {
-                        bot.getSender().SENDER.sendPrivateMsg(code, msg);
-                        log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
-                    } else {
-                        bot.getSender().SENDER.sendGroupMsg(code, msg);
-                        log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
-                    }
-                } else if (!EmptyUtil.isNullOrEmpty(msg) && !EmptyUtil.isNullOrEmpty(image)) {
-                    //只发文字
-                    if (PRIVATE_MSG.equals(propaganda.getType())) {
-                        bot.getSender().SENDER.sendPrivateMsg(code, msg);
-                        bot.getSender().SENDER.sendPrivateMsg(code, image);
-                        log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
-                    } else {
-                        bot.getSender().SENDER.sendGroupMsg(code, msg);
-                        bot.getSender().SENDER.sendGroupMsg(code, image);
-                        log.info("{} => {} type :{}, msg: {}, image: {},time: {}", botCode, code, propaganda.getType(), msg, image, time);
-                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
         }

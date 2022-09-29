@@ -45,7 +45,7 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper, Propaganda> im
         }
         //根据qq查询对应的喊话数据
         LambdaQueryWrapper<Propaganda> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Propaganda::getCode, robot.getCode()).orderByDesc(Propaganda::getTime);
+        wrapper.eq(Propaganda::getRobotCode, robot.getCode()).orderByDesc(Propaganda::getTime);
         return propagandaMapper.selectList(wrapper);
     }
 
@@ -57,24 +57,20 @@ public class SdkServiceImpl extends ServiceImpl<PropagandaMapper, Propaganda> im
         String source = robot.getCode();
         propaganda.setTime(new Date());
         propaganda.setRobotCode(robot.getCode());
-        Propaganda prop = propagandaMapper.selectOne(Wrappers.lambdaQuery(Propaganda.class)
-                .eq(Propaganda::getCode, propaganda.getCode())
-                .eq(Propaganda::getContext, propaganda.getContext()));
+        boolean isExist = propagandaMapper.exists(Wrappers.lambdaQuery(Propaganda.class)
+                .eq(Propaganda::getId, propaganda.getId()));
         //处理关联表
         LambdaQueryWrapper<Relation> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Relation::getTargetCode, propaganda.getCode()).eq(Relation::getSourceCode, source);
         Relation relation = relationMapper.selectOne(queryWrapper);
-        if (EmptyUtil.isNullOrEmpty(prop)) {
+        if (!isExist) {
             //新增
             propagandaMapper.insert(propaganda);
         } else {
             //修改
-            prop.setImage(propaganda.getImage());
-            prop.setSend(propaganda.isSend());
-            prop.setType(propaganda.getType());
-            prop.setTime(new Date());
-            prop.setRobotCode(robot.getCode());
-            propagandaMapper.updateById(prop);
+            propaganda.setTime(new Date());
+            propaganda.setRobotCode(robot.getCode());
+            propagandaMapper.updateById(propaganda);
         }
         if (EmptyUtil.isNullOrEmpty(relation)) {
             relation = new Relation();
